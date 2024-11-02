@@ -2,3 +2,9 @@ llama-index
 openai
 pypdf
 python-dotenv
+streamlit
+PyPDF2
+llama-index-llms-groq
+llama-index
+langchain-community
+llama_index.embeddings.huggingface
