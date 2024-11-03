@@ -6,20 +6,22 @@ from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-import json
 
 # Initialize the Groq model
 API_KEY = "API_KEY"  # Replace with your actual API key
 llm = Groq(model="llama-3.1-70b-versatile", api_key=API_KEY)
 
-# Set embeddings model
 Settings.llm = llm
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
-# Initialize Streamlit app
+# Streamlit app layout
+st.set_page_config(page_title="RAG Chatbot", layout="wide")
 
-# Load and process PDFs
-uploaded_files = st.file_uploader("Upload PDF documents", type=["pdf"], accept_multiple_files=True)
+st.title("Welcome to Chat with RAG Assistant")
+
+with st.sidebar:
+    st.header("Upload PDF Documents")
+    uploaded_files = st.file_uploader("Upload PDF documents", type=["pdf"], accept_multiple_files=True)
 
 # Function to convert PDF files to text
 def process_pdf_files(files):
@@ -39,7 +41,6 @@ if uploaded_files:
     documents = process_pdf_files(uploaded_files)
     st.write("Documents processed and ready for indexing.")
 
-    # Build index
     index = VectorStoreIndex.from_documents(documents)
 
     # Configure retriever and response synthesizer
@@ -51,9 +52,15 @@ if uploaded_files:
         node_postprocessors=[SimilarityPostprocessor(similarity_cutoff=0.5)],
     )
 
+# Initialize a session state variable to hold responses
+if 'responses' not in st.session_state:
+    st.session_state.responses = []
 
+# User input for the chat
 user_input = st.chat_input('Message to Assistant...', key='prompt_input')
-if user_input: # Get user input
+
+# Handle user input and generate response
+if user_input:
     with st.spinner("Generating response..."):
         if uploaded_files:
             context = query_engine.query(user_input)
@@ -61,10 +68,18 @@ if user_input: # Get user input
 
         response = llm.stream_complete(user_input)
 
-        st.write("Generated Response:")
+        # Display generated response
         response_placeholder = st.empty()  
-
         streamed_response = ""
         for chunk in response:
             streamed_response += chunk.delta or ""
             response_placeholder.write(streamed_response)
+
+        # Store the generated response
+        st.session_state.responses.append((user_input, streamed_response))
+
+
+st.write("Generated Responses:")
+for question, answer in st.session_state.responses:
+    st.write(f"**Q:** {question}")
+    st.write(f"**A:** {answer}")
